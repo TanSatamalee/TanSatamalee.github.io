@@ -7,27 +7,27 @@ Hello to who ever is reading this! This will be my first blog ever so be warned!
 
 We first load in the two datasets we are going to be working with.
 
-`python
+```python
 train = pd.read_csv('train.csv')
 test = pd.read_csv('test.csv')
-`
+```
 
 After importing the data, we first take a glance and look at what we are working with.
 
-`python
+```python
 train.describe()
-`
+```
 
 IMAGE
 
-`python
+```python
 train.describe()
-`
+```
 IMAGE
 
-`python
+```python
 train.info()
-`
+```
 
 IMAGE
 
@@ -35,7 +35,7 @@ The data consists of 891 points with 7 different features. Most notably, we will
 
 Let's first convert everything to numerical values, so that it's much easier for us to work with. From the info description, we see that Name, Sex, Ticket, Cabin, and Embarked are all non-numeric values, so we will convert them using the following block of code:
 
-`python
+```python
 def convert_embarked(x):
     if x == 'S':
         return 2
@@ -91,11 +91,9 @@ train.Sex = train.Sex.apply(convert_sex)
 train.Ticket = train.Ticket.apply(convert_ticket)
 train.Cabin.fillna('None', inplace=True)
 train.Cabin = train.Cabin.apply(convert_cabin)
-train['Title'] = train.Name.str.extract('\, ([A-Z][^ ]*\.)',expand=False)
-train.Title = train.Title.apply(convert_title)
 
 train.info()
-`
+```
 
 IMAGE
 
@@ -103,17 +101,17 @@ IMAGE
 
 Now for the feature engineering. We will be creating three new features. The first is family size. We know the count of spouses and siblings, and we also know the count of parents and grandparents. Combining these two we can get the count of how big each person's family is which might be useful. We will then use this family size to judge whether they came in single or in a small family or a big family.
 
-`python
+```python
 train['Family'] = train.SibSp + train.Parch + 1
 train['Child'] = train.Age.apply(lambda x: 1 if x < 18 else 0)
 train['Single'] = train.Family.apply(lambda x: 1 if x == 1 else 0)
 train['SmallFam'] = train.Family.apply(lambda x: 1 if x < 4 else 0)
 train['LargeFam'] = train.Family.apply(lambda x: 1 if x >= 4 else 0)
-`
+```
 
 Awesome. Now lets look at the Cabin and Ticket features. The Cabin seems really sparse compared to the others, but the ticket feature seems really interesting! There are ticket numbers that overlap and looking even closer we can see that a few of the consecutive tickets are even from the same family. Lets play with this to see if we can get anything useful from it. We first loop through all the rows that are sorted based on just the ticket number (note that some tickets have something in front of the numbers and some say "LINE" so we will omit this for the purpose of this feature). We separate tickets into different groups if they are consecutive and then we will count how many of them are in the same groups. This created a total of 432 groups which can help us mix and match beyond family, such as nannies and such.
 
-`python
+```python
 def ticket_sort(x):
     last = 0
     n = 0
@@ -134,6 +132,59 @@ def ticket_sort(x):
 train = ticket_sort(train)
 group_count = train.groupby("Group").count()
 train['GroupSize'] = train.Group.apply(lambda x: group_count['PassengerId'][x])
-`
+```
+
+Finally, lets look at the untouched Name category. It seems everyone has some sort of title that goes with their names so we will extract that.
+
+```python
+train['Title'] = train.Name.str.extract('\, ([A-Z][^ ]*\.)',expand=False)
+train.Title = train.Title.apply(convert_title)
+```
 
 #### Dealing with Missing Values
+
+Including our new features that were generated, we are missing values from Title, Embarked, Age, and Feats (since we are omitting Cabin due to sparsity). For Title and Embarked, we are just going to go with the main majority since they are missing only a few values and there is a clear majority. For Age and Fare, we are going to derive these based on the mean or median of other variables.
+
+```python
+train.Title = train.Title.fillna(5)
+train.Embarked = train.Embarked.fillna(2)
+train.Fare[train.Fare == 0] = np.nan
+train.Fare = train.groupby("Family").transform(lambda x: x.fillna(x.median())).Fare
+train.Age = train.groupby("Title").transform(lambda x: x.fillna(x.mean())).Age
+
+fig, axs = plt.subplots(2, 5)
+fig.set_size_inches(20, 10)
+train_plot = train.dropna()
+sns.boxplot('Pclass', 'Age', data=train_plot, ax=axs[0][0])
+sns.boxplot('Sex', 'Age', data=train_plot, ax=axs[0][1])
+sns.boxplot('SibSp', 'Age', data=train_plot, ax=axs[0][2])
+sns.boxplot('Parch', 'Age', data=train_plot, ax=axs[0][3])
+sns.boxplot('Ticket', 'Age', data=train_plot, ax=axs[0][4])
+sns.boxplot('Fare', 'Age', data=train_plot, ax=axs[1][0])
+sns.boxplot('Cabin', 'Age', data=train_plot, ax=axs[1][1])
+sns.boxplot('Embarked', 'Age', data=train_plot, ax=axs[1][2])
+sns.boxplot('Title', 'Age', data=train_plot, ax=axs[1][3])
+sns.boxplot('Family', 'Age', data=train_plot, ax=axs[1][4])
+
+fig, axs = plt.subplots(2, 5)
+fig.set_size_inches(20, 10)
+train_plot = train.dropna()[train.Fare < 300]
+sns.boxplot('Pclass', 'Fare', data=train_plot, ax=axs[0][0])
+sns.boxplot('Sex', 'Fare', data=train_plot, ax=axs[0][1])
+sns.boxplot('SibSp', 'Fare', data=train_plot, ax=axs[0][2])
+sns.boxplot('Parch', 'Fare', data=train_plot, ax=axs[0][3])
+sns.boxplot('Ticket', 'Fare', data=train_plot, ax=axs[0][4])
+sns.boxplot('Age', 'Fare', data=train_plot, ax=axs[1][0])
+sns.boxplot('Cabin', 'Fare', data=train_plot, ax=axs[1][1])
+sns.boxplot('Embarked', 'Fare', data=train_plot, ax=axs[1][2])
+sns.boxplot('Title', 'Fare', data=train_plot, ax=axs[1][3])
+sns.boxplot('Family', 'Fare', data=train_plot, ax=axs[1][4])
+```
+
+IMAGE
+
+By graphing scatter plots of each of these versus the other features, we see that Title is a pretty good predictor for Age and Family a fairly good predictor for Fare, so we will use those to predict the missing Age and Fare.
+
+#### Training the Classifier
+
+
