@@ -187,4 +187,48 @@ By graphing scatter plots of each of these versus the other features, we see tha
 
 #### Training the Classifier
 
+For this classifier, we will be using the random forests algorithm. We tune each parameter one-by-one and pick the most optimal ones for our final prediction. We then utilize k-fold cross validation to check our predictor error and ended with a result of about 0.82 score.
 
+```python
+print('n_estimate hypertune')
+kfolds = [5, 10, 20, 50, 70, 100]
+for i in kfolds:
+    tune_rf = RandomForestClassifier()
+    print(np.mean(cross_val_score(tune_rf, X, Y, cv=i)))
+
+print('n_estimate hypertune')
+trees = [1, 5, 10, 20, 50, 70, 100]
+for i in trees:
+    tune_rf = RandomForestClassifier(n_estimators=i)
+    print(np.mean(cross_val_score(tune_rf, X, Y, cv=50)))
+
+print('max_depth hypertune')
+max_depth = [1, 5, 10, 20, 50, 100, 200]
+for i in max_depth:
+    tune_rf = RandomForestClassifier(n_estimators=50, max_depth=i)
+    print(np.mean(cross_val_score(tune_rf, X, Y, cv=50)))
+
+print('min_split hypertune')
+min_split = [0.00001, 0.0001, 0.001, 0.01, 0.1]
+for i in min_split:
+    tune_rf = RandomForestClassifier(n_estimators=50, max_depth=5, min_samples_split=i)
+    print(np.mean(cross_val_score(tune_rf, X, Y, cv=50)))
+
+print('min_split hypertune')
+min_leaf = [0.00001, 0.0001, 0.001, 0.01, 0.1]
+for i in min_leaf:
+    tune_rf = RandomForestClassifier(n_estimators=50, max_depth=5, min_samples_split=0.001, min_samples_leaf=i)
+    print(np.mean(cross_val_score(tune_rf, X, Y, cv=50)))
+
+print('min_split hypertune')
+max_feat = [1, 2, 3, 4]
+for i in max_feat:
+    tune_rf = RandomForestClassifier(n_estimators=50, max_depth=5, min_samples_split=0.001, min_samples_leaf=0.0001, max_features=i)
+    print(np.mean(cross_val_score(tune_rf, X, Y, cv=50)))
+
+rf = RandomForestClassifier(n_estimators=50, max_depth=5, min_samples_split=0.001, min_samples_leaf=0.0001, max_features=2)
+X = train[train_feats]
+Y = train['Survived']
+
+print(np.mean(cross_val_score(rf, X, Y, cv=20)))
+```
